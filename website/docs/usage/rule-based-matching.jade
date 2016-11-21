@@ -21,6 +21,7 @@ p
     |  callable, to receive a list of #[code (ent_id, start, end)] tuples:
 
 +code.
+    from spacy.matcher import Matcher
     matcher = Matcher(nlp.vocab)
     matcher.add_pattern("HelloWorld", [{LOWER: "hello"}, {IS_PUNCT: True}, {LOWER: "world"}])
 
@@ -92,6 +93,7 @@ p
     |  return a 4-tuple #[code (ent_id, label, start, end)].
 
 +code.
+    from spacy.tokens.doc import Doc
     def trim_title(doc, ent_id, label, start, end):
         if doc[start].check_flag(IS_TITLE_TERM):
             return (ent_id, label, start+1, end)
@@ -100,8 +102,8 @@ p
     titles = set(title.lower() for title in [u'Mr.', 'Dr.', 'Ms.', u'Admiral'])
     IS_TITLE_TERM = matcher.vocab.add_flag(lambda string: string.lower() in titles)
     matcher.add_entity('PersonName', acceptor=trim_title)
-    matcher.add_pattern('PersonName', {LOWER: 'mr.'}, {LOWER: 'cruise'}])
-    matcher.add_pattern('PersonName', {LOWER: 'dr.'}, {LOWER: 'seuss'}])
+    matcher.add_pattern('PersonName', [{LOWER: 'mr.'}, {LOWER: 'cruise'}])
+    matcher.add_pattern('PersonName', [{LOWER: 'dr.'}, {LOWER: 'seuss'}])
     doc = Doc(matcher.vocab, words=[u'Mr.', u'Cruise', u'likes', 'Dr.', u'Seuss'])
     for ent_id, label, start, end in matcher(doc):
         print(doc[start:end].text)

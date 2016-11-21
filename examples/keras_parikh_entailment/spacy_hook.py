@@ -1,4 +1,6 @@
 from keras.models import model_from_json
+import numpy
+import numpy.random
 
 
 class KerasSimilarityShim(object):
@@ -30,25 +32,41 @@ class KerasSimilarityShim(object):
         return scores[0]
 
 
-def get_embeddings(cls, vocab):
-    max_rank = max(lex.rank+1 for lex in vocab if lex.has_vector)
-    vectors = numpy.ndarray((max_rank+1, vocab.vectors_length), dtype='float32')
+def get_embeddings(vocab, nr_unk=100):
+    nr_vector = max(lex.rank for lex in vocab) + 1
+    vectors = numpy.zeros((nr_vector+nr_unk+2, vocab.vectors_length), dtype='float32')
     for lex in vocab:
         if lex.has_vector:
-            vectors[lex.rank + 1] = lex.vector
+            vectors[lex.rank+1] = lex.vector / lex.vector_norm
     return vectors
 
 
-def get_word_ids(docs, max_length=100):
+def get_word_ids(docs, rnn_encode=False, tree_truncate=False, max_length=100, nr_unk=100):
     Xs = numpy.zeros((len(docs), max_length), dtype='int32')
     for i, doc in enumerate(docs):
-        j = 0
-        for token in doc:
-            if token.has_vector and not token.is_punct and not token.is_space:
-                Xs[i, j] = token.rank + 1
-                j += 1
-                if j >= max_length:
-                    break
+        if tree_truncate:
+            queue = [sent.root for sent in doc.sents]
+        else:
+            queue = list(doc)
+        words = []
+        while len(words) <= max_length and queue:
+            word = queue.pop(0)
+            if rnn_encode or (not word.is_punct and not word.is_space):
+                words.append(word)
+            if tree_truncate:
+                queue.extend(list(word.lefts))
+                queue.extend(list(word.rights))
+        words.sort()
+        for j, token in enumerate(words):
+            if token.has_vector:
+                Xs[i, j] = token.rank+1
+            else:
+                Xs[i, j] = (token.shape % (nr_unk-1))+2
+            j += 1
+            if j >= max_length:
+                break
+        else:
+            Xs[i, len(words)] = 1
     return Xs
 
 
@@ -57,6 +75,3 @@ def create_similarity_pipeline(nlp):
                 nlp.path / 'similarity',
                 nlp,
                 feature_extracter=get_features)]
-
-
-
