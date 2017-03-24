@@ -13,14 +13,17 @@ p
 
 +code.
     from spacy.vocab import Vocab
-    from spacy.pipeline import Tagger
+    from spacy.tagger import Tagger
     from spacy.tokens import Doc
+    from spacy.gold import GoldParse
+
 
     vocab = Vocab(tag_map={'N': {'pos': 'NOUN'}, 'V': {'pos': 'VERB'}})
     tagger = Tagger(vocab)
 
     doc = Doc(vocab, words=['I', 'like', 'stuff'])
-    tagger.update(doc, ['N', 'V', 'N'])
+    gold = GoldParse(doc, tags=['N', 'V', 'N'])
+    tagger.update(doc, gold)
 
     tagger.model.end_training()
 
@@ -71,12 +74,15 @@ p
     |  recognizer, with weights learned using the
     |  #[+a("https://explosion.ai/blog/part-of-speech-pos-tagger-in-python") Averaged Perceptron algorithm].
 
++aside("Linear Model Feature Scheme")
+    |  For a list of the available feature atoms, see the #[+a("/docs/api/features") Linear Model Feature Scheme].
+
 p
     |  Because it's a linear model, it's important for accuracy to build
     |  conjunction features out of the atomic predictors. Let's say you have
     |  two atomic predictors asking, "What is the part-of-speech of the
     |  previous token?", and "What is the part-of-speech of the previous
-    |  previous token?". These ppredictors will introduce a number of features,
+    |  previous token?". These predictors will introduce a number of features,
     |  e.g. #[code Prev-pos=NN], #[code Prev-pos=VBZ], etc. A conjunction
     |  template introduces features such as #[code Prev-pos=NN&Prev-pos=VBZ].
 

@@ -1,11 +1,10 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
-from warnings import warn
 import pathlib
 from contextlib import contextmanager
 import shutil
 
-import ujson as json
+import ujson
 
 
 try:
@@ -13,6 +12,10 @@ try:
 except NameError:
     basestring = str
 
+try:
+    unicode
+except NameError:
+    unicode = str
 
 from .tokenizer import Tokenizer
 from .vocab import Vocab
@@ -21,6 +24,7 @@ from .matcher import Matcher
 from . import attrs
 from . import orth
 from . import util
+from . import language_data
 from .lemmatizer import Lemmatizer
 from .train import Trainer
 
@@ -35,10 +39,7 @@ from .syntax.ner import BiluoPushDown
 class BaseDefaults(object):
     @classmethod
     def create_lemmatizer(cls, nlp=None):
-        if nlp is None or nlp.path is None:
-            return Lemmatizer({}, {}, {})
-        else:
-            return Lemmatizer.load(nlp.path)
+        return Lemmatizer(cls.lemma_index, cls.lemma_exc, cls.lemma_rules)
 
     @classmethod
     def create_vocab(cls, nlp=None):
@@ -48,12 +49,16 @@ class BaseDefaults(object):
             # This is very messy, but it's the minimal working fix to Issue #639.
             # This defaults stuff needs to be refactored (again)
             lex_attr_getters[IS_STOP] = lambda string: string.lower() in cls.stop_words
-            return Vocab(lex_attr_getters=lex_attr_getters, tag_map=cls.tag_map,
+            vocab = Vocab(lex_attr_getters=lex_attr_getters, tag_map=cls.tag_map,
                          lemmatizer=lemmatizer)
         else:
-            return Vocab.load(nlp.path, lex_attr_getters=cls.lex_attr_getters,
+            vocab = Vocab.load(nlp.path, lex_attr_getters=cls.lex_attr_getters,
                              tag_map=cls.tag_map, lemmatizer=lemmatizer)
-    
+        for tag_str, exc in cls.morph_rules.items():
+            for orth_str, attrs in exc.items():
+                vocab.morphology.add_special_case(tag_str, orth_str, attrs)
+        return vocab
+
     @classmethod
     def add_vectors(cls, nlp=None):
         if nlp is None or nlp.path is None:
@@ -66,6 +71,8 @@ class BaseDefaults(object):
     @classmethod
     def create_tokenizer(cls, nlp=None):
         rules = cls.tokenizer_exceptions
+        if cls.token_match:
+            token_match = cls.token_match
         if cls.prefixes:
             prefix_search  = util.compile_prefix_regex(cls.prefixes).search
         else:
@@ -81,7 +88,7 @@ class BaseDefaults(object):
         vocab = nlp.vocab if nlp is not None else cls.create_vocab(nlp)
         return Tokenizer(vocab, rules=rules,
                          prefix_search=prefix_search, suffix_search=suffix_search,
-                         infix_finditer=infix_finditer)
+                         infix_finditer=infix_finditer, token_match=token_match)
 
     @classmethod
     def create_tagger(cls, nlp=None):
@@ -140,24 +147,31 @@ class BaseDefaults(object):
         if nlp.entity:
             pipeline.append(nlp.entity)
         return pipeline
-    
-    prefixes = tuple()
 
-    suffixes = tuple()
+    token_match = language_data.TOKEN_MATCH
 
-    infixes = tuple()
- 
-    tag_map = {}
+    prefixes = tuple(language_data.TOKENIZER_PREFIXES)
+
+    suffixes = tuple(language_data.TOKENIZER_SUFFIXES)
+
+    infixes = tuple(language_data.TOKENIZER_INFIXES)
+
+    tag_map = dict(language_data.TAG_MAP)
 
     tokenizer_exceptions = {}
-   
+
     parser_features = get_templates('parser')
-    
+
     entity_features = get_templates('ner')
 
     tagger_features = Tagger.feature_templates # TODO -- fix this
 
     stop_words = set()
+
+    lemma_rules = {}
+    lemma_exc = {}
+    lemma_index = {}
+    morph_rules = {}
 
     lex_attr_getters = {
         attrs.LOWER: lambda string: string.lower(),
@@ -219,12 +233,21 @@ class Language(object):
         parser_cfg['actions'] = ArcEager.get_actions(gold_parses=gold_tuples)
         entity_cfg['actions'] = BiluoPushDown.get_actions(gold_parses=gold_tuples)
 
-        with (dep_model_dir / 'config.json').open('w') as file_:
-            json.dump(parser_cfg, file_)
-        with (ner_model_dir / 'config.json').open('w') as file_:
-            json.dump(entity_cfg, file_)
-        with (pos_model_dir / 'config.json').open('w') as file_:
-            json.dump(tagger_cfg, file_)
+        with (dep_model_dir / 'config.json').open('wb') as file_:
+            data = ujson.dumps(parser_cfg)
+            if isinstance(data, unicode):
+                data = data.encode('utf8')
+            file_.write(data)
+        with (ner_model_dir / 'config.json').open('wb') as file_:
+            data = ujson.dumps(entity_cfg)
+            if isinstance(data, unicode):
+                data = data.encode('utf8')
+            file_.write(data)
+        with (pos_model_dir / 'config.json').open('wb') as file_:
+            data = ujson.dumps(tagger_cfg)
+            if isinstance(data, unicode):
+                data = data.encode('utf8')
+            file_.write(data)
 
         self = cls(
                 path=path,
@@ -245,7 +268,7 @@ class Language(object):
         self.entity = self.Defaults.create_entity(self)
         self.pipeline = self.Defaults.create_pipeline(self)
         yield Trainer(self, gold_tuples)
-        self.end_training()
+        self.end_training(path=path)
 
     def __init__(self, **overrides):
         if 'data_dir' in overrides and 'path' not in overrides:
@@ -254,10 +277,11 @@ class Language(object):
         if isinstance(path, basestring):
             path = pathlib.Path(path)
         if path is True:
-            path = util.match_best_version(self.lang, '', util.get_data_path())
+            path = util.get_data_path() / self.lang
 
+        self.meta = overrides.get('meta', {})
         self.path = path
- 
+
         self.vocab     = self.Defaults.create_vocab(self) \
                          if 'vocab' not in overrides \
                          else overrides['vocab']
@@ -299,7 +323,7 @@ class Language(object):
         """Apply the pipeline to some text.  The text can span multiple sentences,
         and can contain arbtrary whitespace.  Alignment into the original string
         is preserved.
-        
+
         Args:
             text (unicode): The text to be processed.
 
@@ -327,9 +351,9 @@ class Language(object):
 
     def pipe(self, texts, tag=True, parse=True, entity=True, n_threads=2, batch_size=1000):
         '''Process texts as a stream, and yield Doc objects in order.
-        
+
         Supports GIL-free multi-threading.
-        
+
         Arguments:
             texts (iterator)
             tag (bool)
@@ -352,7 +376,7 @@ class Language(object):
             path = self.path
         elif isinstance(path, basestring):
             path = pathlib.Path(path)
-        
+
         if self.tagger:
             self.tagger.model.end_training()
             self.tagger.model.dump(str(path / 'pos' / 'model'))
@@ -362,7 +386,7 @@ class Language(object):
         if self.entity:
             self.entity.model.end_training()
             self.entity.model.dump(str(path / 'ner' / 'model'))
-        
+
         strings_loc = path / 'vocab' / 'strings.json'
         with strings_loc.open('w', encoding='utf8') as file_:
             self.vocab.strings.dump(file_)
@@ -384,12 +408,14 @@ class Language(object):
         else:
             entity_iob_freqs = []
             entity_type_freqs = []
-        with (path / 'vocab' / 'serializer.json').open('w') as file_:
-            file_.write(
-                json.dumps([
-                    (TAG, tagger_freqs),
-                    (DEP, dep_freqs),
-                    (ENT_IOB, entity_iob_freqs),
-                    (ENT_TYPE, entity_type_freqs),
-                    (HEAD, head_freqs)
-                ]))
+        with (path / 'vocab' / 'serializer.json').open('wb') as file_:
+            data = ujson.dumps([
+                        (TAG, tagger_freqs),
+                        (DEP, dep_freqs),
+                        (ENT_IOB, entity_iob_freqs),
+                        (ENT_TYPE, entity_type_freqs),
+                        (HEAD, head_freqs)
+                    ])
+            if isinstance(data, unicode):
+                data = data.encode('utf8')
+            file_.write(data)

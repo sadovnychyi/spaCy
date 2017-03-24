@@ -1,13 +1,10 @@
 # cython: embedsignature=True
 from __future__ import unicode_literals
 
-import re
 import pathlib
 
 from cython.operator cimport dereference as deref
 from cython.operator cimport preincrement as preinc
-from cpython cimport Py_UNICODE_ISSPACE
-
 
 try:
     import ujson as json
@@ -29,7 +26,7 @@ cdef class Tokenizer:
     """Segment text, and create Doc objects with the discovered segment boundaries."""
     @classmethod
     def load(cls, path, Vocab vocab, rules=None, prefix_search=None, suffix_search=None,
-             infix_finditer=None):
+             infix_finditer=None, token_match=None):
         '''Load a Tokenizer, reading unsupplied components from the path.
         
         Arguments:
@@ -39,6 +36,8 @@ cdef class Tokenizer:
                 A storage container for lexical types.
             rules (dict):
                 Exceptions and special-cases for the tokenizer.
+            token_match:
+                A boolean function matching strings that becomes tokens.
             prefix_search:
                 Signature of re.compile(string).search
             suffix_search:
@@ -65,10 +64,9 @@ cdef class Tokenizer:
             with (path / 'tokenizer' / 'infix.txt').open() as file_:
                 entries = file_.read().split('\n')
             infix_finditer = util.compile_infix_regex(entries).finditer
-        return cls(vocab, rules, prefix_search, suffix_search, infix_finditer)
+        return cls(vocab, rules, prefix_search, suffix_search, infix_finditer, token_match)
 
-
-    def __init__(self, Vocab vocab, rules, prefix_search, suffix_search, infix_finditer):
+    def __init__(self, Vocab vocab, rules, prefix_search, suffix_search, infix_finditer, token_match=None):
         '''Create a Tokenizer, to create Doc objects given unicode text.
         
         Arguments:
@@ -85,10 +83,13 @@ cdef class Tokenizer:
             infix_finditer:
                 A function matching the signature of re.compile(string).finditer
                 to find infixes.
+            token_match:
+                A boolean function matching strings that becomes tokens.
         '''
         self.mem = Pool()
         self._cache = PreshMap()
         self._specials = PreshMap()
+        self.token_match = token_match
         self.prefix_search = prefix_search
         self.suffix_search = suffix_search
         self.infix_finditer = infix_finditer
@@ -100,9 +101,10 @@ cdef class Tokenizer:
     def __reduce__(self):
         args = (self.vocab,
                 self._rules,
-                self._prefix_re, 
-                self._suffix_re, 
-                self._infix_re)
+                self._prefix_re,
+                self._suffix_re,
+                self._infix_re,
+                self.token_match)
 
         return (self.__class__, args, None, None)
     
@@ -158,7 +160,6 @@ cdef class Tokenizer:
                     start = i
                 in_ws = not in_ws
             i += 1
-        i += 1
         if start < i:
             span = string[start:]
             key = hash_string(span)
@@ -216,6 +217,8 @@ cdef class Tokenizer:
         cdef unicode minus_suf
         cdef size_t last_size = 0
         while string and len(string) != last_size:
+            if self.token_match and self.token_match(string):
+                break
             last_size = len(string)
             pre_len = self.find_prefix(string)
             if pre_len != 0:
@@ -225,6 +228,8 @@ cdef class Tokenizer:
                 if minus_pre and self._specials.get(hash_string(minus_pre)) != NULL:
                     string = minus_pre
                     prefixes.push_back(self.vocab.get(mem, prefix))
+                    break
+                if self.token_match and self.token_match(string):
                     break
             suf_len = self.find_suffix(string)
             if suf_len != 0:
@@ -263,7 +268,14 @@ cdef class Tokenizer:
                 tokens.push_back(prefixes[0][i], False)
         if string:
             cache_hit = self._try_cache(hash_string(string), tokens)
-            if not cache_hit:
+            if cache_hit:
+                pass
+            elif self.token_match and self.token_match(string): 
+                # We're always saying 'no' to spaces here -- the caller will
+                # fix up the outermost one, with reference to the original.
+                # See Issue #859
+                tokens.push_back(self.vocab.get(tokens.mem, string), False)
+            else:
                 matches = self.find_infix(string)
                 if not matches:
                     tokens.push_back(self.vocab.get(tokens.mem, string), False)
@@ -276,21 +288,18 @@ cdef class Tokenizer:
                         infix_end = match.end()
                         if infix_start == start:
                             continue
-                        if infix_start == infix_end:
-                            msg = ("Tokenizer found a zero-width 'infix' token.\n"
-                                   "If you're using a built-in tokenizer, please\n"
-                                   "report this bug. If you're using a tokenizer\n"
-                                   "you developed, check your TOKENIZER_INFIXES\n"
-                                   "tuple.\n"
-                                   "String being matched: {string}\n"
-                                   "Language: {lang}")
-                            raise ValueError(msg.format(string=string, lang=self.vocab.lang))
 
                         span = string[start:infix_start]
                         tokens.push_back(self.vocab.get(tokens.mem, span), False)
-                    
-                        infix_span = string[infix_start:infix_end]
-                        tokens.push_back(self.vocab.get(tokens.mem, infix_span), False)
+
+                        if infix_start != infix_end:
+                            # If infix_start != infix_end, it means the infix
+                            # token is non-empty. Empty infix tokens are useful
+                            # for tokenization in some languages (see
+                            # https://github.com/explosion/spaCy/issues/768)
+                            infix_span = string[infix_start:infix_end]
+                            tokens.push_back(self.vocab.get(tokens.mem, infix_span), False)
+
                         start = infix_end
                     span = string[start:]
                     tokens.push_back(self.vocab.get(tokens.mem, span), False)

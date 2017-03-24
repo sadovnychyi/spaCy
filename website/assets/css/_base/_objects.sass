@@ -60,16 +60,24 @@
     background: $color-back
     border-radius: 2px
     border: 1px solid $color-subtle
-    padding: 3.5% 2.5%
+    padding: 3rem 2.5%
+
+
+//- Box
+
+.o-box
+    background: $color-theme-light
+    padding: 2rem
+    border: 1px solid darken($color-theme-light, 5)
+
 
 //- Icons
 
 .o-icon
     vertical-align: middle
 
-.o-help-icon
-    cursor: help
-    margin: 0 0.5rem 0 0.25rem
+    &.o-icon--inline
+        margin: 0 0.5rem 0 0.25rem
 
 
 //- Inline List
@@ -84,7 +92,7 @@
 //- Logo
 
 .o-logo
-    @include size($logo-width, auto)
+    @include size($logo-width, $logo-height)
     fill: currentColor
     vertical-align: middle
     margin: 0 0.5rem

@@ -20,18 +20,21 @@ mixin h(level, id)
               info: https://mathiasbynens.github.io/rel-noopener/
 
 mixin a(url, trusted)
-    a(href=url target="_blank" rel=!trusted ? "noopener nofollow" : false)&attributes(attributes)
+    - external = url.includes("http")
+    a(href=url target=external ? "_blank" : null rel=external && !trusted ? "noopener nofollow" : null)&attributes(attributes)
         block
+
 
 //- Source link (with added icon for "code")
     url - [string] link href, can also be gh() function to generate GitHub link
           see _functions.jade for more info
 
 mixin src(url)
-    +a(url)
-        block
+    span.u-inline-block.u-nowrap
+        +a(url)
+            block
 
-    |   #[+icon("code", 16).u-color-subtle]
+        |   #[+icon("code", 16).o-icon--inline.u-color-subtle]
 
 
 //- API link (with added tag and automatically generated path)
@@ -41,7 +44,7 @@ mixin api(path)
     +a("/docs/api/" + path, true)(target="_self").u-no-border.u-inline-block
         block
 
-        |  #[+icon("book", 18).o-help-icon.u-color-subtle]
+        |  #[+icon("book", 18).o-icon--inline.u-color-subtle]
 
 
 //- Aside for text
@@ -64,6 +67,17 @@ mixin aside-code(label, language)
             block
 
 
+//- Infobox
+    label - [string] infobox title (optional or false for no title)
+
+mixin infobox(label)
+    aside.o-box.o-block.u-text-small
+        if label
+            h3.u-text-label.u-color-theme=label
+
+        block
+
+
 //- Link button
     url      - [string] link href
     trusted  - [boolean] if not set / false, rel="noopener nofollow" is added
@@ -72,7 +86,8 @@ mixin aside-code(label, language)
                see assets/css/_components/_buttons.sass
 
 mixin button(url, trusted, ...style)
-    a.c-button.u-text-label(href=url class=prefixArgs(style, "c-button") role="button" target="_blank" rel=!trusted ? "noopener nofollow" : false)&attributes(attributes)
+    - external = url.includes("http")
+    a.c-button.u-text-label(href=url class=prefixArgs(style, "c-button") role="button" target=external ? "_blank" : null rel=external && !trusted ? "noopener nofollow" : null)&attributes(attributes)
         block
 
 
@@ -146,7 +161,7 @@ mixin tag()
 
 mixin list(type, start)
     if type
-        ol.c-list.o-block.u-text(class="c-list--#{type}" style=(start === 0 || start) ? "counter-reset: li #{(start - 1)}" : false)&attributes(attributes)
+        ol.c-list.o-block.u-text(class="c-list--#{type}" style=(start === 0 || start) ? "counter-reset: li #{(start - 1)}" : null)&attributes(attributes)
             block
 
     else

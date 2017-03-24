@@ -1,27 +1,29 @@
+# coding: utf8
 from __future__ import unicode_literals, print_function
 
-from os import path
-
-from ..language import Language
+from ..language import Language, BaseDefaults
 from ..attrs import LANG
-from . import language_data
+
+from .language_data import *
+from .punctuation import TOKENIZER_INFIXES, TOKENIZER_SUFFIXES
+
+
+class FrenchDefaults(BaseDefaults):
+    lex_attr_getters = dict(Language.Defaults.lex_attr_getters)
+    lex_attr_getters[LANG] = lambda text: 'fr'
+
+    stop_words = STOP_WORDS
+    infixes = tuple(TOKENIZER_INFIXES)
+    suffixes = tuple(TOKENIZER_SUFFIXES)
+    token_match = TOKEN_MATCH
+
+    @classmethod
+    def create_tokenizer(cls, nlp=None):
+        cls.tokenizer_exceptions = get_tokenizer_exceptions()
+        return super(FrenchDefaults, cls).create_tokenizer(nlp)
 
 
 class French(Language):
     lang = 'fr'
-    
-    class Defaults(Language.Defaults):
-        tokenizer_exceptions = dict(language_data.TOKENIZER_EXCEPTIONS)
-        lex_attr_getters = dict(Language.Defaults.lex_attr_getters)
-        lex_attr_getters[LANG] = lambda text: 'fr'
-        
-        prefixes = tuple(language_data.TOKENIZER_PREFIXES)
-        
-        suffixes = tuple(language_data.TOKENIZER_SUFFIXES)
-        
-        infixes = tuple(language_data.TOKENIZER_INFIXES)
 
-        tag_map = dict(language_data.TAG_MAP)
-
-        stop_words = set(language_data.STOP_WORDS)
-
+    Defaults = FrenchDefaults

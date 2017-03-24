@@ -2,12 +2,16 @@
     "sidebar": {
         "Get started": {
             "Installation": "./",
-            "Lightning tour": "lightning-tour"
+            "Models": "models",
+            "Lightning tour": "lightning-tour",
+            "Command line": "cli",
+            "Resources": "resources"
         },
         "Workflows": {
             "Loading the pipeline": "language-processing-pipeline",
             "Processing text": "processing-text",
             "spaCy's data model": "data-model",
+            "POS tagging": "pos-tagging",
             "Using the parse": "dependency-parse",
             "Entity recognition": "entity-recognition",
             "Custom pipelines": "customizing-pipeline",
@@ -15,7 +19,8 @@
             "Word vectors": "word-vectors-similarities",
             "Deep learning": "deep-learning",
             "Custom tokenization": "customizing-tokenizer",
-            "Training": "training"
+            "Training": "training",
+            "Adding languages": "adding-languages"
         },
         "Examples": {
             "Tutorials": "tutorials",
@@ -25,11 +30,26 @@
 
     "index": {
         "title": "Install spaCy",
+        "next": "models"
+    },
+
+    "models": {
+        "title": "Models",
         "next": "lightning-tour"
     },
 
     "lightning-tour": {
-        "title": "Lightning tour"
+        "title": "Lightning tour",
+        "next": "cli"
+    },
+
+    "cli": {
+        "title": "Command Line Interface",
+        "next": "resources"
+    },
+
+    "resources": {
+        "title": "Resources"
     },
 
     "language-processing-pipeline": {
@@ -82,10 +102,25 @@
         "title": "Training the tagger, parser and entity recognizer"
     },
 
+    "pos-tagging": {
+        "title": "Part-of-speech tagging",
+        "next": "dependency-parse"
+    },
+
+    "adding-languages": {
+        "title": "Adding languages",
+        "next": "training"
+    },
+
     "showcase": {
         "title": "Showcase",
 
         "libraries": {
+            "spacy_api": {
+                "url": "https://github.com/kootenpv/spacy_api",
+                "author": "Pascal van Kooten",
+                "description": "Server/client to load models in a separate, dedicated process."
+            },
             "spacy-nlp": {
                 "url": "https://github.com/kengz/spacy-nlp",
                 "author": "Wah Loon Keng",
@@ -105,6 +140,11 @@
                 "url": "https://github.com/avisingh599/visual-qa",
                 "author": "Avi Singh",
                 "description": "Keras-based LSTM/CNN models for Visual Question Answering."
+            },
+            "rasa_nlu": {
+                "url": "https://github.com/golastmile/rasa_nlu",
+                "author": "LASTMILE",
+                "description": "High level APIs for building your own language parser using existing NLP and ML libraries."
             }
         },
         "visualizations": {
@@ -166,9 +206,20 @@
                 "url": "https://books.google.de/books?id=vbQlDQAAQBAJ",
                 "author": "Andreas C. Müller and Sarah Guido (O'Reilly, 2016)",
                 "description": "Andreas is a lead developer of Scikit-Learn, and Sarah is a lead data scientist at Mashable. We're proud to get a mention."
+            },
+
+            "Text Analytics with Python: A Practical Real-World Approach to Gaining Actionable Insights from your Data": {
+                "url": "https://www.amazon.com/Text-Analytics-Python-Real-World-Actionable/dp/148422387X",
+                "author": "Dipanjan Sarkar (Apress / Springer, 2016)",
+                "description": "Derive useful insights from your data using Python. Learn the techniques related to natural language processing and text analytics, and gain the skills to know which technique is best suited to solve a particular problem."
             }
         },
         "research": {
+            "Distributional semantics for understanding spoken meal descriptions": {
+                "url": "https://www.semanticscholar.org/paper/Distributional-semantics-for-understanding-spoken-Korpusik-Huang/5f55c5535e80d3e5ed7f1f0b89531e32725faff5",
+                "author": "Mandy Korpusik et al. (2016)"
+            },
+
             "Refactoring the Genia Event Extraction Shared Task Toward a General Framework for IE-Driven KB Development": {
                 "url": "https://www.semanticscholar.org/paper/Refactoring-the-Genia-Event-Extraction-Shared-Task-Kim-Wang/06d94b64a7bd2d3433f57caddad5084435d6a91f",
                 "author": "Jin-Dong Kim et al. (2016)"
@@ -204,7 +255,7 @@
             "NLP with spaCy in 10 lines of code": {
                 "url": "https://github.com/cytora/pycon-nlp-in-10-lines",
                 "author": "Andraz Hribernik et al. (Cytora)",
-                "tags": [ "jupyter" ]
+                "tags": ["jupyter"]
             },
             "Intro to NLP with spaCy": {
                 "url": "https://nicschrading.com/project/Intro-to-NLP-with-spaCy/",
@@ -213,7 +264,7 @@
             "NLP with spaCy and IPython Notebook": {
                 "url": "http://blog.sharepointexperience.com/2016/01/nlp-and-sharepoint-part-1/",
                 "author": "Dustin Miller (SharePoint)",
-                "tags": [ "jupyter" ]
+                "tags": ["jupyter"]
             },
             "Getting Started with spaCy": {
                 "url": "http://textminingonline.com/getting-started-with-spacy",
@@ -226,7 +277,7 @@
             "NLP (almost) From Scratch - POS Network with spaCy": {
                 "url": "http://sujitpal.blogspot.de/2016/07/nlp-almost-from-scratch-implementing.html",
                 "author": "Sujit Pal",
-                "tags": [ "gensim", "keras" ]
+                "tags": ["gensim", "keras"]
             },
             "NLP tasks with various libraries": {
                 "url": "http://clarkgrubb.com/nlp",
@@ -242,44 +293,54 @@
             "Modern NLP in Python – What you can learn about food by analyzing a million Yelp reviews": {
                 "url": "http://nbviewer.jupyter.org/github/skipgram/modern-nlp-in-python/blob/master/executable/Modern_NLP_in_Python.ipynb",
                 "author": "Patrick Harrison (S&P Global)",
-                "tags": [ "jupyter", "gensim" ]
+                "tags": ["jupyter", "gensim"]
             },
-
             "Deep Learning with custom pipelines and Keras": {
                 "url": "https://explosion.ai/blog/spacy-deep-learning-keras",
                 "author": "Matthew Honnibal",
-                "tags": [ "keras", "sentiment" ]
+                "tags": ["keras", "sentiment"]
             },
             "A decomposable attention model for Natural Language Inference": {
                 "url": "https://github.com/explosion/spaCy/tree/master/examples/keras_parikh_entailment",
                 "author": "Matthew Honnibal",
-                "tags": [ "keras", "similarity" ]
+                "tags": ["keras", "similarity"]
             },
 
             "Using the German model": {
                 "url": "https://explosion.ai/blog/german-model",
                 "author": "Wolfgang Seeker",
-                "tags": [ "multi-lingual" ]
+                "tags": ["multi-lingual"]
             },
             "Sense2vec with spaCy and Gensim": {
                 "url": "https://explosion.ai/blog/sense2vec-with-spacy",
                 "author": "Matthew Honnibal",
-                "tags": [ "big data", "gensim" ]
+                "tags": ["big data", "gensim"]
             },
             "Building your bot's brain with Node.js and spaCy": {
                 "url": "https://explosion.ai/blog/chatbot-node-js-spacy",
                 "author": "Wah Loon Keng",
-                "tags": [ "bots", "node.js" ]
+                "tags": ["bots", "node.js"]
             },
             "An intent classifier with spaCy": {
                 "url": "http://blog.themusio.com/2016/07/18/musios-intent-classifier-2/",
                 "author": "Musio",
-                "tags": [ "bots", "keras" ]
+                "tags": ["bots", "keras"]
             },
             "Visual Question Answering with spaCy": {
                 "url": "http://iamaaditya.github.io/2016/04/visual_question_answering_demo_notebook",
                 "author": "Aaditya Prakash",
-                "tags": [ "vqa", "keras" ]
+                "tags": ["vqa", "keras"]
+            },
+            "Extracting time suggestions from emails with spaCy": {
+                "url": "https://medium.com/redsift-outbox/what-time-cc9ce0c2aed2",
+                "author": "Chris Savvopoulos",
+                "tags": ["ner"]
+            },
+
+            "Advanced text analysis with spaCy and Scikit-Learn": {
+                "url": "https://github.com/JonathanReeve/advanced-text-analysis-workshop-2017/blob/master/advanced-text-analysis.ipynb",
+                "author": "Jonathan Reeve",
+                "tags": ["jupyter", "scikit-learn"]
             }
         },
 
@@ -287,22 +348,22 @@
             "Information extraction": {
                 "url": "https://github.com/explosion/spaCy/blob/master/examples/information_extraction.py",
                 "author": "Matthew Honnibal",
-                "tags": [ "snippet" ]
+                "tags": ["snippet"]
             },
             "Neural bag of words": {
                 "url": "https://github.com/explosion/spaCy/blob/master/examples/nn_text_class.py",
                 "author": "Matthew Honnibal",
-                "tags": [ "sentiment" ]
+                "tags": ["sentiment"]
             },
             "Part-of-speech tagging": {
                 "url": "https://github.com/explosion/spaCy/blob/master/examples/pos_tag.py",
                 "author": "Matthew Honnibal",
-                "tags": [ "pos" ]
+                "tags": ["pos"]
             },
             "Parallel parse": {
                 "url": "https://github.com/explosion/spaCy/blob/master/examples/parallel_parse.py",
                 "author": "Matthew Honnibal",
-                "tags": [ "big data" ]
+                "tags": ["big data"]
             },
             "Inventory count": {
                 "url": "https://github.com/explosion/spaCy/tree/master/examples/inventory_count",
@@ -311,7 +372,7 @@
             "Multi-word matches": {
                 "url": "https://github.com/explosion/spaCy/blob/master/examples/multi_word_matches.py",
                 "author": "Matthew Honnibal",
-                "tags": [ "matcher", "out of date" ]
+                "tags": ["matcher", "out of date"]
             }
         }
     }

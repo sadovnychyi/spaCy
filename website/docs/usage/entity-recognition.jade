@@ -54,10 +54,10 @@ p
     doc = nlp(u'London is a big city in the United Kingdom.')
     doc.ents = []
     assert doc[0].ent_type_ == ''
-    doc.ents = [Span(0, 1, label='GPE')]
+    doc.ents = [Span(doc, 0, 1, label=doc.vocab.strings['GPE'])]
     assert doc[0].ent_type_ == 'GPE'
     doc.ents = []
-    doc.ents = [(u'LondonCity', 0, 1, u'GPE')]
+    doc.ents = [(u'LondonCity', doc.vocab.strings['GPE']), 0, 1)]
 
 p
     |  The value you assign should be a sequence, the values of which
@@ -119,79 +119,7 @@ p
 
 +h(2, "entity-types") Built-in entity types
 
-+h(3, "entity-types-named") Named types
-
-+table([ "Type", "Description" ])
-    +row
-        +cell #[code PERSON]
-        +cell People, including fictional.
-
-    +row
-        +cell #[code NORP]
-        +cell Nationalities or religious or political groups.
-
-    +row
-        +cell #[code FACILITY]
-        +cell Buildings, airports, highways, bridges, etc.
-
-    +row
-        +cell #[code ORG]
-        +cell Companies, agencies, institutions, etc.
-
-    +row
-        +cell #[code GPE]
-        +cell Countries, cities, states.
-
-    +row
-        +cell #[code LOC]
-        +cell Non-GPE locations, mountain ranges, bodies of water.
-
-    +row
-        +cell #[code PRODUCT]
-        +cell Objects, vehicles, foods, etc. (Not services.)
-
-    +row
-        +cell #[code EVENT]
-        +cell Named hurricanes, battles, wars, sports events, etc.
-
-    +row
-        +cell #[code WORK_OF_ART]
-        +cell Titles of books, songs, etc.
-
-    +row
-        +cell #[code LANGUAGE]
-        +cell Any named language
-
-+h(3, "entity-types-numeric") Numeric types
-
-+table([ "Type", "Description" ])
-    +row
-        +cell #[code DATE]
-        +cell Absolute or relative dates or periods.
-
-    +row
-        +cell #[code TIME]
-        +cell Times smaller than a day.
-
-    +row
-        +cell #[code PERCENT]
-        +cell Percentage, including "%".
-
-    +row
-        +cell #[code MONEY]
-        +cell Monetary values, including unit.
-
-    +row
-        +cell #[code QUANTITY]
-        +cell Measurements, as of weight or distance.
-
-    +row
-        +cell #[code ORDINAL]
-        +cell "first", "second", etc.
-
-    +row
-        +cell #[code CARDINAL]
-        +cell Numerals that do not fall under another type.
+include ../api/_annotation/_named-entities
 
 +aside("Install")
     |  The #[+api("load") spacy.load()] function configures a pipeline that
@@ -210,14 +138,16 @@ p
 
 +code.
     import spacy
+    import random
     from spacy.gold import GoldParse
+    from spacy.language import EntityRecognizer
 
     train_data = [
         ('Who is Chaka Khan?', [(7, 17, 'PERSON')]),
         ('I like London and Berlin.', [(7, 13, 'LOC'), (18, 24, 'LOC')])
     ]
 
-    nlp = spacy.load(entity=False, parser=False)
+    nlp = spacy.load('en', entity=False, parser=False)
     ner = EntityRecognizer(nlp.vocab, entity_types=['PERSON', 'LOC'])
 
     for itn in range(5):

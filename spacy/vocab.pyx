@@ -1,24 +1,24 @@
 from __future__ import unicode_literals
 
-from libc.stdio cimport fopen, fclose, fread, fwrite, FILE
 from libc.string cimport memset
 from libc.stdint cimport int32_t
-from libc.stdint cimport uint64_t
 from libc.math cimport sqrt
 
 from pathlib import Path
 import bz2
-import io
-import math
 import ujson as json
-import tempfile
+import re
+
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
 from .lexeme cimport EMPTY_LEXEME
 from .lexeme cimport Lexeme
 from .strings cimport hash_string
-from .orth cimport word_shape
 from .typedefs cimport attr_t
-from .cfile cimport CFile
+from .cfile cimport CFile, StringCFile
 from .lemmatizer import Lemmatizer
 from .attrs import intify_attrs
 from .tokens.token cimport Token
@@ -29,7 +29,6 @@ from . import symbols
 from cymem.cymem cimport Address
 from .serialize.packer cimport Packer
 from .attrs cimport PROB, LANG
-from . import deprecated
 from . import util
 
 
@@ -53,7 +52,7 @@ cdef class Vocab:
     '''
     @classmethod
     def load(cls, path, lex_attr_getters=None, lemmatizer=True,
-             tag_map=True, serializer_freqs=True, oov_prob=True, **deprecated_kwargs): 
+             tag_map=True, serializer_freqs=True, oov_prob=True, **deprecated_kwargs):
         """
         Load the vocabulary from a path.
 
@@ -83,6 +82,8 @@ cdef class Vocab:
         if tag_map is True and (path / 'vocab' / 'tag_map.json').exists():
             with (path / 'vocab' / 'tag_map.json').open('r', encoding='utf8') as file_:
                 tag_map = json.load(file_)
+        elif tag_map is True:
+            tag_map = None
         if lex_attr_getters is not None \
         and oov_prob is True \
         and (path / 'vocab' / 'oov_prob').exists():
@@ -94,17 +95,19 @@ cdef class Vocab:
         if serializer_freqs is True and (path / 'vocab' / 'serializer.json').exists():
             with (path / 'vocab' / 'serializer.json').open('r', encoding='utf8') as file_:
                 serializer_freqs = json.load(file_)
-
-        cdef Vocab self = cls(lex_attr_getters=lex_attr_getters, tag_map=tag_map,
-                              lemmatizer=lemmatizer, serializer_freqs=serializer_freqs)
+        else:
+            serializer_freqs = None
 
         with (path / 'vocab' / 'strings.json').open('r', encoding='utf8') as file_:
-            self.strings.load(file_)
+            strings_list = json.load(file_)
+        cdef Vocab self = cls(lex_attr_getters=lex_attr_getters, tag_map=tag_map,
+                              lemmatizer=lemmatizer, serializer_freqs=serializer_freqs,
+                              strings=strings_list)
         self.load_lexemes(path / 'vocab' / 'lexemes.bin')
         return self
 
     def __init__(self, lex_attr_getters=None, tag_map=None, lemmatizer=None,
-            serializer_freqs=None, **deprecated_kwargs):
+            serializer_freqs=None, strings=tuple(), **deprecated_kwargs):
         '''Create the vocabulary.
 
         lex_attr_getters (dict):
@@ -122,7 +125,7 @@ cdef class Vocab:
             Vocab: The newly constructed vocab object.
         '''
         util.check_renamed_kwargs({'get_lex_attr': 'lex_attr_getters'}, deprecated_kwargs)
-        
+
         lex_attr_getters = lex_attr_getters if lex_attr_getters is not None else {}
         tag_map = tag_map if tag_map is not None else {}
         if lemmatizer in (None, True, False):
@@ -133,6 +136,9 @@ cdef class Vocab:
         self._by_hash = PreshMap()
         self._by_orth = PreshMap()
         self.strings = StringStore()
+        if strings:
+            for string in strings:
+                self.strings[string]
         # Load strings in a special order, so that we have an onset number for
         # the vocabulary. This way, when words are added in order, the orth ID
         # is the frequency rank of the word, plus a certain offset. The structural
@@ -147,10 +153,10 @@ cdef class Vocab:
         self.lex_attr_getters = lex_attr_getters
         self.morphology = Morphology(self.strings, tag_map, lemmatizer)
         self.serializer_freqs = serializer_freqs
-        
+
         self.length = 1
         self._serializer = None
-    
+
     property serializer:
         # Having the serializer live here is super messy :(
         def __get__(self):
@@ -175,7 +181,7 @@ cdef class Vocab:
         vectors if necessary. The memory will be zeroed.
 
         Arguments:
-            new_size (int): The new size of the vectors. 
+            new_size (int): The new size of the vectors.
         '''
         cdef hash_t key
         cdef size_t addr
@@ -188,11 +194,11 @@ cdef class Vocab:
 
     def add_flag(self, flag_getter, int flag_id=-1):
         '''Set a new boolean flag to words in the vocabulary.
-        
+
         The flag_setter function will be called over the words currently in the
         vocab, and then applied to new words as they occur. You'll then be able
         to access the flag value on each token, using token.check_flag(flag_id).
-        
+
         See also:
             Lexeme.set_flag, Lexeme.check_flag, Token.set_flag, Token.check_flag.
 
@@ -202,7 +208,7 @@ cdef class Vocab:
 
             flag_id (int):
                 An integer between 1 and 63 (inclusive), specifying the bit at which the
-                flag will be stored. If -1, the lowest available bit will be 
+                flag will be stored. If -1, the lowest available bit will be
                 chosen.
 
         Returns:
@@ -260,9 +266,9 @@ cdef class Vocab:
 
     cdef const LexemeC* _new_lexeme(self, Pool mem, unicode string) except NULL:
         cdef hash_t key
-        cdef bint is_oov = mem is not self.mem
-        if len(string) < 3:
+        if len(string) < 3 or self.length < 10000:
             mem = self.mem
+        cdef bint is_oov = mem is not self.mem
         lex = <LexemeC*>mem.alloc(sizeof(LexemeC), 1)
         lex.orth = self.strings[string]
         lex.length = len(string)
@@ -301,7 +307,7 @@ cdef class Vocab:
         '''
         key = hash_string(string)
         lex = self._by_hash.get(key)
-        return True if lex is not NULL else False
+        return lex is not NULL
 
     def __iter__(self):
         '''Iterate over the lexemes in the vocabulary.
@@ -320,7 +326,7 @@ cdef class Vocab:
         Arguments:
             id_or_string (int or unicode):
               The integer ID of a word, or its unicode string.
-              
+
               If an int >= Lexicon.size, IndexError is raised. If id_or_string
               is neither an int nor a unicode string, ValueError is raised.
 
@@ -347,21 +353,23 @@ cdef class Vocab:
             for attr_id, value in props.items():
                 Token.set_struct_attr(token, attr_id, value)
         return tokens
-    
-    def dump(self, loc):
-        """Save the lexemes binary data to the given location.
+
+    def dump(self, loc=None):
+        """Save the lexemes binary data to the given location, or
+        return a byte-string with the data if loc is None.
 
         Arguments:
-            loc (Path): The path to save to.
+            loc (Path or None): The path to save to, or None.
         """
-        if hasattr(loc, 'as_posix'):
-            loc = loc.as_posix()
-        cdef bytes bytes_loc = loc.encode('utf8') if type(loc) == unicode else loc
-
-        cdef CFile fp = CFile(bytes_loc, 'wb')
+        cdef CFile fp
+        if loc is None:
+            fp = StringCFile('wb')
+        else:
+            fp = CFile(loc, 'wb')
         cdef size_t st
         cdef size_t addr
         cdef hash_t key
+        cdef LexemeC* lexeme = NULL
         for key, addr in self._by_hash.items():
             lexeme = <LexemeC*>addr
             fp.write_from(&lexeme.orth, sizeof(lexeme.orth), 1)
@@ -380,6 +388,8 @@ cdef class Vocab:
             fp.write_from(&lexeme.l2_norm, sizeof(lexeme.l2_norm), 1)
             fp.write_from(&lexeme.lang, sizeof(lexeme.lang), 1)
         fp.close()
+        if loc is None:
+            return fp.string_data()
 
     def load_lexemes(self, loc):
         '''Load the binary vocabulary data from the given location.
@@ -392,10 +402,10 @@ cdef class Vocab:
         '''
         fp = CFile(loc, 'rb',
                 on_open_error=lambda: IOError('LexemeCs file not found at %s' % loc))
-        cdef LexemeC* lexeme
+        cdef LexemeC* lexeme = NULL
         cdef hash_t key
         cdef unicode py_str
-        cdef attr_t orth
+        cdef attr_t orth = 0
         assert sizeof(orth) == sizeof(lexeme.orth)
         i = 0
         while True:
@@ -403,6 +413,60 @@ cdef class Vocab:
                 fp.read_into(&orth, 1, sizeof(orth))
             except IOError:
                 break
+            lexeme = <LexemeC*>self.mem.alloc(sizeof(LexemeC), 1)
+            # Copy data from the file into the lexeme
+            fp.read_into(&lexeme.flags, 1, sizeof(lexeme.flags))
+            fp.read_into(&lexeme.id, 1, sizeof(lexeme.id))
+            fp.read_into(&lexeme.length, 1, sizeof(lexeme.length))
+            fp.read_into(&lexeme.orth, 1, sizeof(lexeme.orth))
+            fp.read_into(&lexeme.lower, 1, sizeof(lexeme.lower))
+            fp.read_into(&lexeme.norm, 1, sizeof(lexeme.norm))
+            fp.read_into(&lexeme.shape, 1, sizeof(lexeme.shape))
+            fp.read_into(&lexeme.prefix, 1, sizeof(lexeme.prefix))
+            fp.read_into(&lexeme.suffix, 1, sizeof(lexeme.suffix))
+            fp.read_into(&lexeme.cluster, 1, sizeof(lexeme.cluster))
+            fp.read_into(&lexeme.prob, 1, sizeof(lexeme.prob))
+            fp.read_into(&lexeme.sentiment, 1, sizeof(lexeme.sentiment))
+            fp.read_into(&lexeme.l2_norm, 1, sizeof(lexeme.l2_norm))
+            fp.read_into(&lexeme.lang, 1, sizeof(lexeme.lang))
+
+            lexeme.vector = EMPTY_VEC
+            py_str = self.strings[lexeme.orth]
+            key = hash_string(py_str)
+            self._by_hash.set(key, lexeme)
+            self._by_orth.set(lexeme.orth, lexeme)
+            self.length += 1
+            i += 1
+        fp.close()
+
+    def _deserialize_lexemes(self, CFile fp):
+        '''Load the binary vocabulary data from the given CFile.
+        '''
+        cdef LexemeC* lexeme = NULL
+        cdef hash_t key
+        cdef unicode py_str
+        cdef attr_t orth = 0
+        assert sizeof(orth) == sizeof(lexeme.orth)
+        i = 0
+        cdef int todo = fp.size
+        cdef int lex_size = sizeof(lexeme.flags)
+        lex_size += sizeof(lexeme.id)
+        lex_size += sizeof(lexeme.length)
+        lex_size += sizeof(lexeme.orth)
+        lex_size += sizeof(lexeme.lower)
+        lex_size += sizeof(lexeme.norm)
+        lex_size += sizeof(lexeme.shape)
+        lex_size += sizeof(lexeme.prefix)
+        lex_size += sizeof(lexeme.suffix)
+        lex_size += sizeof(lexeme.cluster)
+        lex_size += sizeof(lexeme.prob)
+        lex_size += sizeof(lexeme.sentiment)
+        lex_size += sizeof(lexeme.l2_norm)
+        lex_size += sizeof(lexeme.lang)
+        while True:
+            if todo < lex_size:
+                break
+            todo -= lex_size
             lexeme = <LexemeC*>self.mem.alloc(sizeof(LexemeC), 1)
             # Copy data from the file into the lexeme
             fp.read_into(&lexeme.flags, 1, sizeof(lexeme.flags))
@@ -441,7 +505,7 @@ cdef class Vocab:
         cdef int32_t word_len
         cdef bytes word_str
         cdef char* chars
-        
+
         cdef Lexeme lexeme
         cdef CFile out_file = CFile(out_loc, 'wb')
         for lexeme in self:
@@ -458,7 +522,7 @@ cdef class Vocab:
         out_file.close()
 
     def load_vectors(self, file_):
-        """Load vectors from a text-based file.         
+        """Load vectors from a text-based file.
 
         Arguments:
             file_ (buffer): The file to read from. Entries should be separated by newlines,
@@ -473,9 +537,12 @@ cdef class Vocab:
         cdef attr_t orth
         cdef int32_t vec_len = -1
         cdef double norm = 0.0
+
+        whitespace_pattern = re.compile(r'\s', re.UNICODE)
+
         for line_num, line in enumerate(file_):
             pieces = line.split()
-            word_str = pieces.pop(0)
+            word_str = " " if whitespace_pattern.match(line) else pieces.pop(0)
             if vec_len == -1:
                 vec_len = len(pieces)
             elif vec_len != len(pieces):
@@ -529,6 +596,8 @@ cdef class Vocab:
             vec = <float*>file_.alloc_read(self.mem, vec_len, sizeof(float))
 
             string_id = self.strings[chars[:word_len]]
+            # Insert words into vocab to add vector.
+            self.get_by_orth(self.mem, string_id)
             while string_id >= vectors.size():
                 vectors.push_back(EMPTY_VEC)
             assert vec != NULL
@@ -550,6 +619,42 @@ cdef class Vocab:
                 lex.vector = EMPTY_VEC
         self.vectors_length = vec_len
         return vec_len
+
+
+def pickle_vocab(vocab):
+    sstore = vocab.strings
+    morph = vocab.morphology
+    length = vocab.length
+    serializer = vocab._serializer
+    data_dir = vocab.data_dir
+    lex_attr_getters = vocab.lex_attr_getters
+
+    lexemes_data = vocab.dump()
+    vectors_length = vocab.vectors_length
+
+    return (unpickle_vocab,
+        (sstore, morph, serializer, data_dir, lex_attr_getters,
+            lexemes_data, length, vectors_length))
+
+
+def unpickle_vocab(sstore, morphology, serializer, data_dir,
+        lex_attr_getters, bytes lexemes_data, int length, int vectors_length):
+    cdef Vocab vocab = Vocab()
+    vocab.length = length
+    vocab.vectors_length = vectors_length
+    vocab.strings = sstore
+    cdef CFile fp = StringCFile('r', data=lexemes_data)
+    vocab.morphology = morphology
+    vocab._serializer = serializer
+    vocab.data_dir = data_dir
+    vocab.lex_attr_getters = lex_attr_getters
+    vocab._deserialize_lexemes(fp)
+    vocab.length = length
+    vocab.vectors_length = vectors_length
+    return vocab
+
+
+copy_reg.pickle(Vocab, pickle_vocab, unpickle_vocab)
 
 
 def write_binary_vectors(in_loc, out_loc):

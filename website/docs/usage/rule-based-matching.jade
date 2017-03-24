@@ -18,7 +18,9 @@ p Here's a minimal example. We first add a pattern that specifies three tokens:
 
 p
     |  Once we've added the pattern, we can use the #[code matcher] as a
-    |  callable, to receive a list of #[code (ent_id, start, end)] tuples:
+    |  callable, to receive a list of #[code (ent_id, start, end)] tuples.
+    |  Note that #[code LOWER] and #[code IS_PUNCT] are data attributes
+    |  of #[code spacy.attrs].
 
 +code.
     from spacy.matcher import Matcher
@@ -141,7 +143,7 @@ p
             span.merge(label=label, tag='NNP' if label else span.root.tag_)
 
     matcher.add_entity('GoogleNow', on_match=merge_phrases)
-    matcher.add_pattern('GoogleNow', {ORTH: 'Google'}, {ORTH: 'Now'}])
+    matcher.add_pattern('GoogleNow', [{ORTH: 'Google'}, {ORTH: 'Now'}])
     doc = Doc(matcher.vocab, words=[u'Google', u'Now', u'is', u'being', u'rebranded'])
     matcher(doc)
     print([w.text for w in doc])

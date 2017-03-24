@@ -12,17 +12,18 @@
         "COMPANY_URL": "https://explosion.ai",
         "DEMOS_URL": "https://demos.explosion.ai",
 
-        "SPACY_VERSION": "1.2",
+        "SPACY_VERSION": "1.7",
         "LATEST_NEWS": {
-            "url": "https://explosion.ai/blog/spacy-user-survey",
-            "title": "The results of the spaCy user survey"
+            "url": "/docs/usage/models",
+            "title": "Downloading and installing models as packages"
         },
 
         "SOCIAL": {
             "twitter": "spacy_io",
             "github": "explosion",
             "reddit": "spacynlp",
-            "codepen": "explosion"
+            "codepen": "explosion",
+            "gitter": "explosion/spaCy"
         },
 
         "NAVIGATION": {
@@ -53,9 +54,9 @@
             }
         },
 
-        "V_CSS": "1.9",
-        "V_JS": "1.0",
-        "DEFAULT_SYNTAX" : "python",
+        "V_CSS": "1.2",
+        "V_JS": "1.2",
+        "DEFAULT_SYNTAX": "python",
         "ANALYTICS": "UA-58931649-1",
         "MAILCHIMP": {
             "user": "spacy.us12",

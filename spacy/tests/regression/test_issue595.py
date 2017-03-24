@@ -1,14 +1,24 @@
+# coding: utf-8
+from __future__ import unicode_literals
+
+from ...symbols import POS, VERB, VerbForm_inf
+from ...vocab import Vocab
+from ...lemmatizer import Lemmatizer
+from ..util import get_doc
+
 import pytest
 
-import spacy
 
+def test_issue595():
+    """Test lemmatization of base forms"""
+    words = ["Do", "n't", "feed", "the", "dog"]
+    tag_map = {'VB': {POS: VERB, 'morph': VerbForm_inf}}
+    rules = {"verb": [["ed", "e"]]}
 
-@pytest.mark.models
-def test_not_lemmatize_base_forms():
-    nlp = spacy.load('en', parser=False)
-    doc = nlp(u"Don't feed the dog")
-    feed = doc[2]
-    feed.tag_ = u'VB'
-    assert feed.text == u'feed'
-    assert feed.lemma_ == u'feed'
+    lemmatizer = Lemmatizer({'verb': {}}, {'verb': {}}, rules)
+    vocab = Vocab(lemmatizer=lemmatizer, tag_map=tag_map)
+    doc = get_doc(vocab, words)
 
+    doc[2].tag_ = 'VB'
+    assert doc[2].text == 'feed'
+    assert doc[2].lemma_ == 'feed'
