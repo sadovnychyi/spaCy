@@ -4,18 +4,16 @@ import pathlib
 
 import ujson as json
 
-from .en.lemmatizer import INDEX, EXC, RULES
 from .symbols import POS, NOUN, VERB, ADJ, PUNCT
 from .symbols import VerbForm_inf, VerbForm_none
+from .symbols import Number_sing
+from .symbols import Degree_pos
 
 
 class Lemmatizer(object):
     @classmethod
-    def load(cls, path, rules=None):
-        index = dict(INDEX)
-        exc = dict(EXC)
-        rules = dict(RULES)
-        return cls(index, exc, rules)
+    def load(cls, path, index=None, exc=None, rules=None):
+        return cls(index or {}, exc or {}, rules or {})
 
     def __init__(self, index, exceptions, rules):
         self.index = index
@@ -45,11 +43,19 @@ class Lemmatizer(object):
         morphology = {} if morphology is None else morphology
         others = [key for key in morphology if key not in (POS, 'number', 'pos', 'verbform')]
         true_morph_key = morphology.get('morph', 0)
-        if univ_pos == 'noun' and morphology.get('number') == 'sing' and not others:
+        if univ_pos == 'noun' and morphology.get('Number') == 'sing':
             return True
-        elif univ_pos == 'verb' and morphology.get('verbform') == 'inf' and not others:
+        elif univ_pos == 'verb' and morphology.get('VerbForm') == 'inf':
             return True
-        elif true_morph_key in (VerbForm_inf, VerbForm_none):
+        elif univ_pos == 'adj' and morphology.get('Degree') == 'pos':
+            return True
+        elif VerbForm_inf in morphology:
+            return True
+        elif VerbForm_none in morphology:
+            return True
+        elif Number_sing in morphology:
+            return True
+        elif Degree_pos in morphology:
             return True
         else:
             return False

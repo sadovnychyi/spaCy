@@ -5,8 +5,8 @@ spaCy is a library for advanced natural language processing in Python and
 Cython. spaCy is built on  the very latest research, but it isn't researchware.
 It was designed from day one to be used in real products. spaCy currently supports
 English and German,  as well as tokenization for Chinese, Spanish, Italian, French,
-Portuguese, Dutch, Swedish, Finnish, Hungarian and Bengali. It's commercial  open-source
-software, released under the MIT license.
+Portuguese, Dutch, Swedish, Finnish, Hungarian, Bengali and Hebrew. It's commercial 
+open-source software, released under the MIT license.
 
 💫 **Version 1.7 out now!** `Read the release notes here. <https://github.com/explosion/spaCy/releases/>`_
 
@@ -40,6 +40,7 @@ software, released under the MIT license.
 =================== ===
 `Usage Workflows`_  How to use spaCy and its features.
 `API Reference`_    The detailed reference for spaCy's API.
+`Troubleshooting`_  Common problems and solutions for beginners.
 `Tutorials`_        End-to-end examples, with code you can modify and run.
 `Showcase & Demos`_ Demos, libraries and products from the spaCy community.
 `Contribute`_       How to contribute to the spaCy project and code base.
@@ -47,6 +48,7 @@ software, released under the MIT license.
 
 .. _Usage Workflows: https://spacy.io/docs/usage/
 .. _API Reference: https://spacy.io/docs/api/
+.. _Troubleshooting: https://spacy.io/docs/usage/troubleshooting
 .. _Tutorials: https://spacy.io/docs/usage/tutorials
 .. _Showcase & Demos: https://spacy.io/docs/usage/showcase
 .. _Contribute: https://github.com/explosion/spaCy/blob/master/CONTRIBUTING.md
@@ -100,7 +102,7 @@ Supports
 
 ==================== ===
 **Operating system** macOS / OS X, Linux, Windows (Cygwin, MinGW, Visual Studio)
-**Python version**   CPython 2.6, 2.7, 3.3, 3.4, 3.5. Only 64 bit.
+**Python version**   CPython 2.6, 2.7, 3.3+. Only 64 bit.
 **Package managers** `pip`_ (source packages only), `conda`_ (via ``conda-forge``)
 ==================== ===
 
@@ -316,6 +318,7 @@ and ``--model`` are optional and enable additional tests:
 =========== ============== ===========
 Version     Date           Description
 =========== ============== ===========
+`v1.7.3`_   ``2017-03-26`` Alpha support for Hebrew, new CLI commands and bug fixes
 `v1.7.2`_   ``2017-03-20`` Small fixes to beam parser and model linking
 `v1.7.1`_   ``2017-03-19`` Fix data download for system installation
 `v1.7.0`_   ``2017-03-18`` New 50 MB model, CLI, better downloads and lots of bug fixes
@@ -344,6 +347,7 @@ Version     Date           Description
 `v0.93`_    ``2015-09-22`` Bug fixes to word vectors
 =========== ============== ===========
 
+.. _v1.7.3: https://github.com/explosion/spaCy/releases/tag/v1.7.3
 .. _v1.7.2: https://github.com/explosion/spaCy/releases/tag/v1.7.2
 .. _v1.7.1: https://github.com/explosion/spaCy/releases/tag/v1.7.1
 .. _v1.7.0: https://github.com/explosion/spaCy/releases/tag/v1.7.0

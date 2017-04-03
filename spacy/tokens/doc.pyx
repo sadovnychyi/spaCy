@@ -394,7 +394,7 @@ cdef class Doc:
                 raise ValueError(
                     "noun_chunks requires the dependency parse, which "
                     "requires data to be installed. If you haven't done so, run: "
-                    "\npython -m spacy.%s.download all\n"
+                    "\npython -m spacy download %s\n"
                     "to install the data" % self.vocab.lang)
             # Accumulate the result before beginning to iterate over it. This prevents
             # the tokenisation from being changed out from under us during the iteration.
@@ -427,7 +427,7 @@ cdef class Doc:
                 raise ValueError(
                     "sentence boundary detection requires the dependency parse, which "
                     "requires data to be installed. If you haven't done so, run: "
-                    "\npython -m spacy.%s.download all\n"
+                    "\npython -m spacy download %s\n"
                     "to install the data" % self.vocab.lang)
             cdef int i
             start = 0
@@ -667,6 +667,16 @@ cdef class Doc:
             attributes[TAG] = self.vocab.strings[tag]
             attributes[LEMMA] = self.vocab.strings[lemma]
             attributes[ENT_TYPE] = self.vocab.strings[ent_type]
+        elif not args:
+            # TODO: This code makes little sense overall. We're still
+            # ignoring most of the attributes?
+            if "label" in attributes and 'ent_type' not in attributes:
+                if type(attributes["label"]) == int:
+                    attributes[ENT_TYPE] = attributes["label"]
+                else:
+                    attributes[ENT_TYPE] = self.vocab.strings[attributes["label"]]
+            if 'ent_type' in attributes:
+                attributes[ENT_TYPE] = attributes['ent_type']
         elif args:
             raise ValueError(
                 "Doc.merge received %d non-keyword arguments. "
@@ -686,6 +696,9 @@ cdef class Doc:
         tag = self.vocab.strings[attributes.get(TAG, span.root.tag)]
         lemma = self.vocab.strings[attributes.get(LEMMA, span.root.lemma)]
         ent_type = self.vocab.strings[attributes.get(ENT_TYPE, span.root.ent_type)]
+        ent_id = attributes.get('ent_id', span.root.ent_id)
+        if isinstance(ent_id, basestring):
+            ent_id = self.vocab.strings[ent_id]
 
         # Get LexemeC for newly merged token
         new_orth = ''.join([t.text_with_ws for t in span])
@@ -706,6 +719,7 @@ cdef class Doc:
         else:
             token.ent_iob = 3
             token.ent_type = self.vocab.strings[ent_type]
+        token.ent_id = ent_id
         # Begin by setting all the head indices to absolute token positions
         # This is easier to work with for now than the offsets
         # Before thinking of something simpler, beware the case where a dependency

@@ -144,6 +144,7 @@ class BaseDefaults(object):
             pipeline.append(nlp.tagger)
         if nlp.parser:
             pipeline.append(nlp.parser)
+            pipeline.append(Pseudoprojectivity.deprojectivize)
         if nlp.entity:
             pipeline.append(nlp.entity)
         return pipeline
@@ -278,7 +279,8 @@ class Language(object):
             path = pathlib.Path(path)
         if path is True:
             path = util.get_data_path() / self.lang
-
+            if not path.exists() and 'path' not in overrides:
+                path = None
         self.meta = overrides.get('meta', {})
         self.path = path
 
