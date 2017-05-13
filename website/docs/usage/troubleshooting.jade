@@ -33,7 +33,6 @@ p
     |  import the language's #[code Language] class instead, for example
     |  #[code from spacy.fr import French].
 
-
 +h(3, "symlink-privilege") Symbolic link privilege not held
 
 +code(false, "text").
@@ -51,6 +50,20 @@ p
     |  or use a #[code virtualenv] to install spaCy in a user directory, instead
     |  of doing a system-wide installation.
 
++h(3, "no-cache-dir") No such option: --no-cache-dir
+
++code(false, "text").
+    no such option: --no-cache-dir
+
+p
+    |  The #[code download] command uses pip to install the models and sets the
+    |  #[code --no-cache-dir] flag to prevent it from requiring too much memory.
+    |  #[+a("https://pip.pypa.io/en/stable/reference/pip_install/#caching") This setting]
+    |  requires pip v6.0 or newer.
+
++infobox("Solution")
+    |  Run #[code pip install -U pip] to upgrade to the latest version of pip.
+    |  To see which version you have installed, run #[code pip --version].
 
 +h(3, "import-error") Import error
 
@@ -123,6 +136,20 @@ p
     |  Run the command with #[code python -m], for example
     |  #[code python -m spacy download en]. For more info on this, see the
     |  #[+a("/docs/usage/cli") CLI documentation].
+
++h(3, "module-load") 'module' object has no attribute 'load'
+
++code(false, "text").
+    AttributeError: 'module' object has no attribute 'load'
+
+p
+    |  While this could technically have many causes, including spaCy being
+    |  broken, the most likely one is that your script's file or directory name
+    |  is "shadowing" the module – e.g. your file is called #[code spacy.py],
+    |  or a directory you're importing from is called #[code spacy].
+
++infobox("Solution")
+    |  When using spaCy, never call anything else #[code spacy].
 
 +h(2, "usage") Using spaCy
 

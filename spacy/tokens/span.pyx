@@ -1,26 +1,32 @@
+# coding: utf8
 from __future__ import unicode_literals
 from collections import defaultdict
+
+cimport numpy as np
 import numpy
 import numpy.linalg
-cimport numpy as np
 from libc.math cimport sqrt
-import six
 
+from .doc cimport token_by_start, token_by_end
 from ..structs cimport TokenC, LexemeC
 from ..typedefs cimport flags_t, attr_t, hash_t
 from ..attrs cimport attr_id_t
 from ..parts_of_speech cimport univ_pos_t
 from ..util import normalize_slice
-from .doc cimport token_by_start, token_by_end
 from ..attrs cimport IS_PUNCT, IS_SPACE
 from ..lexeme cimport Lexeme
+from ..compat import is_config
+from .. import about
 
 
 cdef class Span:
-    """A slice from a Doc object."""
+    """
+    A slice from a Doc object.
+    """
     def __cinit__(self, Doc doc, int start, int end, int label=0, vector=None,
                   vector_norm=None):
-        '''Create a Span object from the slice doc[start : end]
+        """
+        Create a Span object from the slice doc[start : end]
 
         Arguments:
             doc (Doc): The parent document.
@@ -30,7 +36,7 @@ cdef class Span:
             vector (ndarray[ndim=1, dtype='float32']): A meaning representation of the span.
         Returns:
             Span The newly constructed object.
-        '''
+        """
         if not (0 <= start <= end <= len(doc)):
             raise IndexError
 
@@ -61,6 +67,10 @@ cdef class Span:
         elif op == 5:
             return self.start_char >= other.start_char
 
+    def __hash__(self):
+        return hash((self.doc, self.label, self.start_char, self.end_char))
+
+
     def __len__(self):
         self._recalculate_indices()
         if self.end < self.start:
@@ -68,7 +78,7 @@ cdef class Span:
         return self.end - self.start
 
     def __repr__(self):
-        if six.PY3:
+        if is_config(python3=True):
             return self.text
         return self.text.encode('utf-8')
 
@@ -89,7 +99,8 @@ cdef class Span:
             yield self.doc[i]
 
     def merge(self, *args, **attributes):
-        """Retokenize the document, such that the span is merged into a single token.
+        """
+        Retokenize the document, such that the span is merged into a single token.
 
         Arguments:
             **attributes:
@@ -102,7 +113,8 @@ cdef class Span:
         return self.doc.merge(self.start_char, self.end_char, *args, **attributes)
 
     def similarity(self, other):
-        '''Make a semantic similarity estimate. The default estimate is cosine
+        """
+        Make a semantic similarity estimate. The default estimate is cosine
         similarity using an average of word vectors.
 
         Arguments:
@@ -111,7 +123,7 @@ cdef class Span:
 
         Return:
             score (float): A scalar similarity score. Higher is more similar.
-        '''
+        """
         if 'similarity' in self.doc.user_span_hooks:
             self.doc.user_span_hooks['similarity'](self, other)
         if self.vector_norm == 0.0 or other.vector_norm == 0.0:
@@ -133,11 +145,12 @@ cdef class Span:
             self.end = end + 1
 
     property sent:
-        '''The sentence span that this span is a part of.
+        """
+        The sentence span that this span is a part of.
 
         Returns:
             Span The sentence this is part of.
-        '''
+        """
         def __get__(self):
             if 'sent' in self.doc.user_span_hooks:
                 return self.doc.user_span_hooks['sent'](self)
@@ -198,20 +211,19 @@ cdef class Span:
             return u''.join([t.text_with_ws for t in self])
 
     property noun_chunks:
-        '''
+        """
         Yields base noun-phrase #[code Span] objects, if the document
         has been syntactically parsed. A base noun phrase, or
         'NP chunk', is a noun phrase that does not permit other NPs to
         be nested within it – so no NP-level coordination, no prepositional
         phrases, and no relative clauses. For example:
-        '''
+        """
         def __get__(self):
             if not self.doc.is_parsed:
                 raise ValueError(
                     "noun_chunks requires the dependency parse, which "
-                    "requires data to be installed. If you haven't done so, run: "
-                    "\npython -m spacy download %s\n"
-                    "to install the data" % self.vocab.lang)
+                    "requires data to be installed. For more info, see the "
+                    "documentation: \n%s\n" % about.__docs_models__)
             # Accumulate the result before beginning to iterate over it. This prevents
             # the tokenisation from being changed out from under us during the iteration.
             # The tricky thing here is that Span accepts its tokenisation changing,
@@ -223,17 +235,16 @@ cdef class Span:
                 yield span
 
     property root:
-        """The token within the span that's highest in the parse tree. If there's a tie, the earlist is prefered.
+        """
+        The token within the span that's highest in the parse tree. If there's a
+        tie, the earlist is prefered.
 
         Returns:
             Token: The root token.
 
-        i.e. has the
-        shortest path to the root of the sentence (or is the root itself).
-
-        If multiple words are equally high in the tree, the first word is taken.
-
-        For example:
+        i.e. has the shortest path to the root of the sentence (or is the root
+        itself). If multiple words are equally high in the tree, the first word
+        is taken. For example:
 
         >>> toks = nlp(u'I like New York in Autumn.')
 
@@ -303,7 +314,8 @@ cdef class Span:
                 return self.doc[root]
 
     property lefts:
-        """Tokens that are to the left of the span, whose head is within the Span.
+        """
+        Tokens that are to the left of the span, whose head is within the Span.
 
         Yields: Token A left-child of a token of the span.
         """
@@ -314,7 +326,8 @@ cdef class Span:
                         yield left
 
     property rights:
-        """Tokens that are to the right of the Span, whose head is within the Span.
+        """
+        Tokens that are to the right of the Span, whose head is within the Span.
 
         Yields: Token A right-child of a token of the span.
         """
@@ -325,7 +338,8 @@ cdef class Span:
                         yield right
 
     property subtree:
-        """Tokens that descend from tokens in the span, but fall outside it.
+        """
+        Tokens that descend from tokens in the span, but fall outside it.
 
         Yields: Token A descendant of a token within the span.
         """
@@ -337,7 +351,9 @@ cdef class Span:
                 yield from word.subtree
 
     property ent_id:
-        '''An (integer) entity ID. Usually assigned by patterns in the Matcher.'''
+        """
+        An (integer) entity ID. Usually assigned by patterns in the Matcher.
+        """
         def __get__(self):
             return self.root.ent_id
 
@@ -345,9 +361,11 @@ cdef class Span:
             # TODO
             raise NotImplementedError(
                 "Can't yet set ent_id from Span. Vote for this feature on the issue "
-                "tracker: http://github.com/spacy-io/spaCy")
+                "tracker: http://github.com/explosion/spaCy/issues")
     property ent_id_:
-        '''A (string) entity ID. Usually assigned by patterns in the Matcher.'''
+        """
+        A (string) entity ID. Usually assigned by patterns in the Matcher.
+        """
         def __get__(self):
             return self.root.ent_id_
 
@@ -355,7 +373,7 @@ cdef class Span:
             # TODO
             raise NotImplementedError(
                 "Can't yet set ent_id_ from Span. Vote for this feature on the issue "
-                "tracker: http://github.com/spacy-io/spaCy")
+                "tracker: http://github.com/explosion/spaCy/issues")
 
     property orth_:
         def __get__(self):
@@ -397,5 +415,5 @@ cdef int _count_words_to_root(const TokenC* token, int sent_length) except -1:
             raise RuntimeError(
                 "Array bounds exceeded while searching for root word. This likely "
                 "means the parse tree is in an invalid state. Please report this "
-                "issue here: http://github.com/honnibal/spaCy/")
+                "issue here: http://github.com/explosion/spaCy/issues")
     return n

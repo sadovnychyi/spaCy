@@ -1,10 +1,9 @@
+from __future__ import unicode_literals
 from ... import load as load_spacy
 from ...attrs import LEMMA
 from ...matcher import merge_phrase
 
 import pytest
-
-
 
 
 @pytest.mark.models

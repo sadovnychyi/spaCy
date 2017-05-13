@@ -1,7 +1,6 @@
 # coding: utf8
 from __future__ import unicode_literals
 
-import pip
 import requests
 import os
 import subprocess
@@ -18,37 +17,45 @@ def download(model=None, direct=False):
     if direct:
         download_model('{m}/{m}.tar.gz'.format(m=model))
     else:
-        model_name = about.__shortcuts__[model] if model in about.__shortcuts__ else model
+        model_name = check_shortcut(model)
         compatibility = get_compatibility()
         version = get_version(model_name, compatibility)
         download_model('{m}-{v}/{m}-{v}.tar.gz'.format(m=model_name, v=version))
         link_package(model_name, model, force=True)
 
 
-def get_compatibility():
-    version = about.__version__
-    r = requests.get(about.__compatibility__)
+def get_json(url, desc):
+    r = requests.get(url)
     if r.status_code != 200:
         util.sys_exit(
-            "Couldn't fetch compatibility table. Please find the right model for "
-            "your spaCy installation (v{v}), and download it manually:".format(v=version),
+            "Couldn't fetch {d}. Please find the right model for your spaCy "
+            "installation (v{v}), and download it manually:".format(d=desc, v=about.__version__),
             "python -m spacy.download [full model name + version] --direct",
             title="Server error ({c})".format(c=r.status_code))
+    return r.json()
 
-    comp = r.json()['spacy']
+
+def check_shortcut(model):
+    shortcuts = get_json(about.__shortcuts__, "available shortcuts")
+    return shortcuts.get(model, model)
+
+
+def get_compatibility():
+    version = about.__version__
+    comp_table = get_json(about.__compatibility__, "compatibility table")
+    comp = comp_table['spacy']
     if version not in comp:
         util.sys_exit(
             "No compatible models found for v{v} of spaCy.".format(v=version),
             title="Compatibility error")
-    else:
-        return comp[version]
+    return comp[version]
 
 
 def get_version(model, comp):
     if model not in comp:
         util.sys_exit(
             "No compatible model found for "
-            "{m} (spaCy v{v}).".format(m=model, v=about.__version__),
+            "'{m}' (spaCy v{v}).".format(m=model, v=about.__version__),
             title="Compatibility error")
     return comp[model][0]
 
@@ -72,5 +79,5 @@ def check_error_depr(model):
             "As of v1.7.0, the download all command is deprecated. Please "
             "download the models individually via spacy.download [model name] "
             "or pip install. For more info on this, see the documentation: "
-            "{d}".format(d=about.__docs__),
+            "{d}".format(d=about.__docs_models__),
             title="Deprecated command")

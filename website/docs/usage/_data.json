@@ -20,8 +20,10 @@
             "Word vectors": "word-vectors-similarities",
             "Deep learning": "deep-learning",
             "Custom tokenization": "customizing-tokenizer",
+            "Adding languages": "adding-languages",
             "Training": "training",
-            "Adding languages": "adding-languages"
+            "Training NER": "training-ner",
+            "Saving & loading": "saving-loading"
         },
         "Examples": {
             "Tutorials": "tutorials",
@@ -101,11 +103,21 @@
 
     "customizing-tokenizer": {
         "title": "Customizing the tokenizer",
-        "next": "training"
+        "next": "adding-languages"
     },
 
     "training": {
-        "title": "Training the tagger, parser and entity recognizer"
+        "title": "Training spaCy's statistical models",
+        "next": "saving-loading"
+    },
+
+    "training-ner": {
+        "title": "Training the Named Entity Recognizer",
+        "next": "saving-loading"
+    },
+
+    "saving-loading": {
+        "title": "Saving and loading models"
     },
 
     "pos-tagging": {
@@ -137,6 +149,11 @@
                 "author": "Johannes Gontrum",
                 "description": "spaCy accessed by a REST API, wrapped in a Docker container."
             },
+            "spacy-nlp-zeromq": {
+                "url": "https://github.com/pasupulaphani/spacy-nlp-docker",
+                "author": "Phaninder Pasupula",
+                "description": "Docker image exposing spaCy with ZeroMQ bindings."
+            },
             "textacy": {
                 "url": "https://github.com/chartbeat-labs/textacy",
                 "author": " Burton DeWilde (Chartbeat)",
@@ -151,6 +168,11 @@
                 "url": "https://github.com/golastmile/rasa_nlu",
                 "author": "LASTMILE",
                 "description": "High level APIs for building your own language parser using existing NLP and ML libraries."
+            },
+            "spacyr": {
+                "url": "https://github.com/kbenoit/spacyr",
+                "author": "Kenneth Benoit",
+                "description": "An R wrapper for spaCy."
             }
         },
         "visualizations": {
@@ -351,6 +373,18 @@
         },
 
         "code": {
+            "Training a new entity type": {
+                "url": "https://github.com/explosion/spaCy/blob/master/examples/training/train_new_entity_type.py",
+                "author": "Matthew Honnibal",
+                "tags": ["ner", "training"]
+            },
+
+            "Training an NER system from scratch": {
+                "url": "https://github.com/explosion/spaCy/blob/master/examples/training/train_ner_standalone.py",
+                "author": "Matthew Honnibal",
+                "tags": ["ner", "training"]
+            },
+
             "Information extraction": {
                 "url": "https://github.com/explosion/spaCy/blob/master/examples/information_extraction.py",
                 "author": "Matthew Honnibal",

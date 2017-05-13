@@ -9,12 +9,15 @@ from spacy.cli import link as cli_link
 from spacy.cli import info as cli_info
 from spacy.cli import package as cli_package
 from spacy.cli import train as cli_train
+from spacy.cli import model as cli_model
+from spacy.cli import convert as cli_convert
 
 
 class CLI(object):
-    """Command-line interface for spaCy"""
-
-    commands = ('download', 'link', 'info', 'package', 'train')
+    """
+    Command-line interface for spaCy
+    """
+    commands = ('download', 'link', 'info', 'package', 'train', 'model', 'convert')
 
     @plac.annotations(
         model=("model to download (shortcut or model name)", "positional", None, str),
@@ -27,7 +30,6 @@ class CLI(object):
         can be shortcut, model name or, if --direct flag is set, full model name
         with version.
         """
-
         cli_download(model, direct)
 
 
@@ -42,7 +44,6 @@ class CLI(object):
         either the name of a pip package, or the local path to the model data
         directory. Linking models allows loading them via spacy.load(link_name).
         """
-
         cli_link(origin, link_name, force)
 
 
@@ -56,23 +57,22 @@ class CLI(object):
         speficied as an argument, print model information. Flag --markdown
         prints details in Markdown for easy copy-pasting to GitHub issues.
         """
-
         cli_info(model, markdown)
 
 
     @plac.annotations(
         input_dir=("directory with model data", "positional", None, str),
         output_dir=("output parent directory", "positional", None, str),
+        meta=("path to meta.json", "option", "m", str),
         force=("force overwriting of existing folder in output directory", "flag", "f", bool)
     )
-    def package(self, input_dir, output_dir, force=False):
+    def package(self, input_dir, output_dir, meta=None, force=False):
         """
         Generate Python package for model data, including meta and required
         installation files. A new directory will be created in the specified
         output directory, and model data will be copied over.
         """
-
-        cli_package(input_dir, output_dir, force)
+        cli_package(input_dir, output_dir, meta, force)
 
 
     @plac.annotations(
@@ -91,9 +91,34 @@ class CLI(object):
         """
         Train a model. Expects data in spaCy's JSON format.
         """
-
         cli_train(lang, output_dir, train_data, dev_data, n_iter, not no_tagger,
                   not no_parser, not no_ner, parser_L1)
+
+    @plac.annotations(
+        lang=("model language", "positional", None, str),
+        model_dir=("output directory to store model in", "positional", None, str),
+        freqs_data=("tab-separated frequencies file", "positional", None, str),
+        clusters_data=("Brown clusters file", "positional", None, str),
+        vectors_data=("word vectors file", "positional", None, str)
+    )
+    def model(self, lang, model_dir, freqs_data, clusters_data=None, vectors_data=None):
+        """
+        Initialize a new model and its data directory.
+        """
+        cli_model(lang, model_dir, freqs_data, clusters_data, vectors_data)
+
+    @plac.annotations(
+        input_file=("input file", "positional", None, str),
+        output_dir=("output directory for converted file", "positional", None, str),
+        n_sents=("Number of sentences per doc", "option", "n", float),
+        morphology=("Enable appending morphology to tags", "flag", "m", bool)
+    )
+    def convert(self, input_file, output_dir, n_sents=10, morphology=False):
+        """
+        Convert files into JSON format for use with train command and other
+        experiment management functions.
+        """
+        cli_convert(input_file, output_dir, n_sents, morphology)
 
 
     def __missing__(self, name):
@@ -104,6 +129,5 @@ class CLI(object):
 if __name__ == '__main__':
     import plac
     import sys
-    cli = CLI()
     sys.argv[0] = 'spacy'
     plac.Interpreter.call(CLI)
